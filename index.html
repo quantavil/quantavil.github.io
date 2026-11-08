@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="quantavil’s repositories and starred projects on GitHub.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preload" href="./src/fonts/geist-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./src/style.css">
+  <title>quantavil</title>
+  <script type="module" src="./src/main.ts"></script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <nav aria-label="Main navigation"><a class="site-name" href="https://github.com/quantavil">quantavil</a><span> / </span><a href="#repos">repos</a><span> · </span><a href="#stars">stars</a><span> · </span><a href="https://github.com/quantavil">github</a></nav>
+      <button class="theme" type="button" aria-label="Switch color theme">theme: auto</button>
+    </header>
+    <main>
+      <noscript><p>Find me on <a href="https://github.com/quantavil">GitHub</a>.</p></noscript>
+      <section id="repos" aria-labelledby="repos-title">
+        
+        <div id="languages" class="language-chart"></div>
+        <h2 id="repos-title" class="visually-hidden">Repos</h2>
+        <div class="index" data-kind="repos"></div>
+      </section>
+      <section id="stars" aria-labelledby="stars-title">
+        
+        <h2 id="stars-title" class="visually-hidden">Stars</h2>
+        <div class="index" data-kind="stars"></div>
+      </section>
+    </main>
+    <footer id="footer"></footer>
+  </div>
+</body>
+</html>
