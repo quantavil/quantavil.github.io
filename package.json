@@ -1,1 +1,1 @@
-{"name":"quantavil-site","private":true,"scripts":{"dev":"bun ./index.html","build":"bun build ./index.html --minify --outdir=dist","check":"tsc --noEmit"},"devDependencies":{"typescript":"^5.9.3"}}
+{"name":"quantavil-site","private":true,"scripts":{"dev":"bun ./index.html","build":"bun build ./index.html --minify --outdir=dist && cp llms.txt dist/llms.txt","check":"tsc --noEmit"},"devDependencies":{"typescript":"^5.9.3"}}

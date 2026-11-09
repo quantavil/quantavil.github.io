@@ -5,21 +5,49 @@ import { getItems, readCache } from './github';
 
 export function createIndex(kind: Kind) {
   const root = $<HTMLElement>(`[data-kind="${kind}"]`); let items: Repo[] = []; let sort: Sort = kind === 'stars' ? 'starred' : 'stars'; let direction = -1;
-  const controls = node('div', 'controls'); const sorts = node('div', 'sorts'); sorts.setAttribute('aria-label', 'Sort by'); const filterToggle = node('button', 'filter-toggle', 'filter +'); filterToggle.type = 'button'; filterToggle.setAttribute('aria-expanded', 'false'); filterToggle.setAttribute('aria-controls', `${kind}-filters`); const panel = node('div', 'filter-panel'); panel.id = `${kind}-filters`; panel.hidden = true; controls.append(sorts, filterToggle); const summary = node('p', 'summary', 'Loading…'); const status = node('p', 'status'); status.setAttribute('role', 'status'); const list = node('ol', 'list'); root.append(controls, panel, summary, status, list);
-  let minStars = 0; let minForks = 0; let selectedLanguage = '';
+  const search = node('input', 'search'); search.type = 'search'; search.placeholder = 'search…'; search.setAttribute('aria-label', `Search ${kind}`); search.autocomplete = 'off'; search.addEventListener('input', () => render());
+  const controls = node('div', 'controls'); const sorts = node('div', 'sorts'); sorts.setAttribute('aria-label', 'Sort by'); const filterToggle = node('button', 'filter-toggle', 'filter +'); filterToggle.type = 'button'; filterToggle.setAttribute('aria-expanded', 'false'); filterToggle.setAttribute('aria-controls', `${kind}-filters`); const panel = node('div', 'filter-panel'); panel.id = `${kind}-filters`; panel.hidden = true; controls.append(sorts, filterToggle); const summary = node('p', 'summary', 'Loading…'); const status = node('p', 'status'); status.setAttribute('role', 'status'); const list = node('ol', 'list'); root.append(search, controls, panel, summary, status, list);
+  const ranges = { stars: [0, 1000], forks: [0, 1000] }; let selectedLanguage = '';
+  const rangeValue = (position: number) => Math.round(Math.expm1(position / 1000 * Math.log1p(10000)));
   const languages = () => [...new Set(items.map(item => item.language).filter(Boolean))].toSorted((a, b) => a.localeCompare(b));
   filterToggle.addEventListener('click', () => { panel.hidden = !panel.hidden; filterToggle.setAttribute('aria-expanded', String(!panel.hidden)); filterToggle.textContent = panel.hidden ? 'filter +' : 'filter −'; if (!panel.hidden) filterOptions(); });
   function filterOptions() {
     panel.replaceChildren();
     const group = (label: string, options: string[], selected: number, select: (index: number) => void) => { const row = node('div', 'filter-group'); row.setAttribute('role', 'group'); row.setAttribute('aria-label', label); row.append(node('span', 'filter-label', `${label}:`)); options.forEach((value, index) => { const button = node('button', '', value); button.type = 'button'; button.setAttribute('aria-pressed', String(index === selected)); button.addEventListener('click', () => { select(index); row.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === index))); render(); }); row.append(button); }); panel.append(row); };
-    const limits = node('div', 'filter-group');
-    for (const metric of ['stars', 'forks'] as const) { const label = node('label', 'number-filter', `minimum ${metric} `); const input = node('input'); input.type = 'number'; input.min = '0'; input.step = '1'; input.value = String(metric === 'stars' ? minStars : minForks); input.addEventListener('input', () => { const value = Math.max(0, Number(input.value) || 0); if (metric === 'stars') minStars = value; else minForks = value; render(); }); label.append(input); limits.append(label); } panel.append(limits);
+    const limits = node('div', 'range-filters');
+    for (const metric of ['stars', 'forks'] as const) {
+      const row = node('div', 'range-filter');
+      const heading = node('div', 'range-heading');
+      const values = node('span', 'range-values');
+      heading.append(node('span', 'filter-label', `${metric}:`), values);
+      const track = node('div', 'range-track');
+      const inputs = [0, 1].map((end) => {
+        const input = node('input'); input.type = 'range'; input.min = '0'; input.max = '1000'; input.step = '1'; input.value = String(ranges[metric][end]);
+        input.setAttribute('aria-label', `${end ? 'Maximum' : 'Minimum'} ${metric}`);
+        input.addEventListener('input', () => {
+          const position = Number(input.value);
+          ranges[metric][end] = end ? Math.max(position, ranges[metric][0]) : Math.min(position, ranges[metric][1]);
+          input.value = String(ranges[metric][end]); update(); render();
+        });
+        track.append(input); return input;
+      });
+      function update() {
+        const [min, max] = ranges[metric];
+        const minValue = rangeValue(min); const maxValue = rangeValue(max);
+        values.textContent = `${minValue.toLocaleString('en')} – ${max === 1000 ? '10,000+' : maxValue.toLocaleString('en')}`;
+        inputs[0].setAttribute('aria-valuetext', String(minValue)); inputs[1].setAttribute('aria-valuetext', max === 1000 ? '10,000 or more' : String(maxValue));
+        track.style.setProperty('--range-start', `${min / 10}%`); track.style.setProperty('--range-end', `${max / 10}%`);
+        inputs[0].style.zIndex = min === 1000 ? '2' : '1';
+      }
+      update(); row.append(heading, track); limits.append(row);
+    } panel.append(limits);
     const options = ['all', ...languages()]; group('language', options, Math.max(0, options.indexOf(selectedLanguage)), index => { selectedLanguage = index ? options[index] : ''; });
   }
   const keys: Sort[] = kind === 'stars' ? ['starred', 'stars', 'forks', 'pushed', 'created', 'name'] : ['stars', 'forks', 'pushed', 'created', 'name'];
   function sortButtons() { sorts.replaceChildren(document.createTextNode('sort: ')); keys.forEach((key, i) => { if (i) sorts.append(document.createTextNode(' · ')); const button = node('button', '', key + (sort === key ? direction === -1 ? ' ↓' : ' ↑' : '')); button.type = 'button'; button.setAttribute('aria-pressed', String(sort === key)); button.setAttribute('aria-label', `${key}${sort === key ? direction === -1 ? ', descending' : ', ascending' : ''}`); button.addEventListener('click', () => { if (sort === key) direction *= -1; else { sort = key; direction = key === 'name' ? 1 : -1; } sortButtons(); sorts.querySelector<HTMLButtonElement>('[aria-pressed=true]')?.focus(); render(); }); sorts.append(button); }); }
   function render() {
-    const filtered = items.filter(item => item.stars >= minStars && item.forks >= minForks && (!selectedLanguage || item.language === selectedLanguage)).toSorted((a, b) => { let result: number; if (sort === 'stars' || sort === 'forks') result = a[sort] - b[sort]; else result = a[sort].localeCompare(b[sort], 'en', { sensitivity: 'base' }); return result * direction || a.fullName.localeCompare(b.fullName); });
+    const query = search.value.trim().toLocaleLowerCase();
+    const filtered = items.filter(item => (!query || [item.fullName, item.description, item.language, ...item.topics].some(value => value?.toLocaleLowerCase().includes(query))) && (['stars', 'forks'] as const).every(metric => item[metric] >= rangeValue(ranges[metric][0]) && (ranges[metric][1] === 1000 || item[metric] <= rangeValue(ranges[metric][1]))) && (!selectedLanguage || item.language === selectedLanguage)).toSorted((a, b) => { let result: number; if (sort === 'stars' || sort === 'forks') result = a[sort] - b[sort]; else result = a[sort].localeCompare(b[sort], 'en', { sensitivity: 'base' }); return result * direction || a.fullName.localeCompare(b.fullName); });
     const overview = document.querySelector<HTMLElement>(`[data-total="${kind}"]`); if (overview) overview.textContent = `${items.length} ${kind === 'stars' ? 'starred projects' : 'repos'}`;
     if (kind === 'repos') { const chart = document.querySelector<HTMLElement>('#languages'); if (chart) { const counts = new Map<string, number>(); for (const item of items) if (item.language) counts.set(item.language, (counts.get(item.language) || 0) + 1); const sorted = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); const total = sorted.reduce((sum, [, count]) => sum + count, 0); chart.replaceChildren(); if (total) { const title = node('p', 'language-title', 'Repositories by primary language'); const bar = node('div', 'language-bar'); bar.setAttribute('aria-label', 'Language distribution'); const labels = node('ul', 'language-labels'); sorted.forEach(([language, count], i) => { const segment = node('span', 'language-segment'); segment.style.width = `${count / total * 100}%`; segment.style.opacity = String(Math.max(.28, 1 - i * .1)); segment.title = `${language}: ${count} repositories`; segment.setAttribute('aria-label', segment.title); segment.tabIndex = 0; bar.append(segment); const label = node('li'); const swatch = node('span', 'language-swatch'); swatch.style.opacity = segment.style.opacity; swatch.setAttribute('aria-hidden', 'true'); label.append(swatch, document.createTextNode(`${language} ${count}`)); labels.append(label); }); chart.append(title, bar, labels); } } }
     const langs = new Set(filtered.map(x => x.language).filter(Boolean)); const total = filtered.reduce((sum, x) => sum + x.stars, 0); summary.textContent = `${filtered.length} ${kind} · ${number.format(total)} ★ · ${langs.size} ${langs.size === 1 ? 'language' : 'languages'}`;

@@ -1,0 +1,12 @@
+# quantavil
+
+This site indexes quantavil's public GitHub profile, repositories, and starred repositories. For complete, current machine-readable data, use the GitHub REST API rather than scraping this JavaScript-rendered page:
+
+- Profile: https://api.github.com/users/quantavil
+- Public repositories: https://api.github.com/users/quantavil/repos?per_page=100
+- Starred repositories: https://api.github.com/users/quantavil/starred?per_page=100
+- GitHub profile: https://github.com/quantavil
+
+Repository and starred endpoints are paginated. Follow the `rel="next"` URL in the HTTP `Link` header until there is no next page. To include the date each repository was starred, send `Accept: application/vnd.github.star+json` to the starred endpoint; each result then contains `starred_at` and `repo`. The default response contains repository objects directly.
+
+These endpoints expose public GitHub data only. GitHub API rate limits apply; authenticated requests can have a higher limit. The site caches its displayed lists locally for 15 minutes, so the API may be more current.
